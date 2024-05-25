@@ -1,4 +1,8 @@
-import Component from "./Component";
+import AssetManager from "./Services/AssetManager";
+import Component from "./Components/Component";
+import KeyboardHandler from "./Services/KeyboardHandler";
+import MouseHandler from "./Services/MouseHandler";
+import ScreenManager from "./Services/ScreenManager";
 
 export type AppOptions = {
     isResizable?: boolean;
@@ -9,11 +13,19 @@ export type AppOptions = {
 export default class App {
     canvas: HTMLCanvasElement;
     context: CanvasRenderingContext2D;
-    components: Component[] = [];
+    components: Set<Component> = new Set<Component>;
 
     isResizable: boolean = true;
+    isPaused: boolean = false;
     width: number = 0;
     height: number = 0;
+
+    mouseHandler: MouseHandler;
+    keyboardHandler: KeyboardHandler;
+    assets: AssetManager;
+    screenManager: ScreenManager;
+
+    lastTime: number = 0;
 
     constructor(canvas: HTMLCanvasElement, options?: AppOptions) {
         this.canvas = canvas;
@@ -25,22 +37,32 @@ export default class App {
                 this.resizeCanvasToAvailableSize();
             }
         });
+
+        this.assets = new AssetManager();
+        this.keyboardHandler = new KeyboardHandler();
+        this.mouseHandler = new MouseHandler();
+        this.screenManager = new ScreenManager(this);
     }
 
     start() {
         this.init();
-
-        const loop = (timeStamp: number) => {
-            this.update(timeStamp);
-            this.render();
-            requestAnimationFrame(loop);
-        };
-
-        requestAnimationFrame(loop);
+        requestAnimationFrame(this.loop.bind(this));
     }
 
     init() {
-    
+        this.components.forEach((component) => {
+            component.init();
+        });
+    }
+
+    loop(timeStamp: number) {
+        const deltaTime : number = (timeStamp - this.lastTime) / 1000;
+        this.lastTime = timeStamp;
+
+        this.update(timeStamp);
+        this.render();
+
+        requestAnimationFrame(this.loop.bind(this));
     }
 
     update(deltaTime: number) {
